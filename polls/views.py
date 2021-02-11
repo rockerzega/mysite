@@ -1,7 +1,9 @@
 from django.shortcuts import get_object_or_404, render
-from django.http import HttpResponse #, Http404
+from django.http import HttpResponse, HttpResponseRedirect #, Http404
 #from django.template import RequestContext, loader
-from .models import Question
+from django.core.urlresolvers import reverse
+
+from .models import Choice, Question
 
 # Create your views here.
 #def index(request):
@@ -24,7 +26,22 @@ def results(request, question_id):
     return HttpResponse(response % question_id)
 
 def vote(request, question_id):
-    return HttpResponse("Estas votando por la pregunta %s." % question_id)
+    p = get_object_or_404(Question, pk=question_id)
+    try:
+        selected_choice = p.choice_set.get(pk=request.POST['choice'])
+    except (KeyError, Choice.DoesNotExist):
+        #Redibuja la pregunta votada en el formulario
+        return render(request, 'polls/detail.html', {
+            'question': p,
+            'error_message': "No ha escogido una opción.",
+        })
+    else:
+        selected_choice.votes += 1
+        selected_choice.save()
+        # Siempre retorna un HttpResponseRedirect luego de una peticion exitosa
+        # con datos de POST. Esto evita que los datos se publiquen dos veces si un
+        # usuario presiona el boton de retroceso
+        return HttpResponseRedirect(reverse('polls:results', args=(p.id,)))
 
 #view que permite ver las ultimas 5 publicaciones sepradas con una coma 
 def index(request):
